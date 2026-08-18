@@ -20,7 +20,7 @@ from urllib.error import HTTPError, URLError
 
 API = "https://www.wikidata.org/w/api.php"
 SPARQL = "https://query.wikidata.org/sparql"
-USER_AGENT = "DeathLab-Longevity-Research/0.1 (https://github.com/elrondhuang-commits/elrondhuang-commits-deathlab-longevity-research)"
+USER_AGENT = "DeathLab-Longevity-Research/0.1.1 (https://github.com/elrondhuang-commits/elrondhuang-commits-deathlab-longevity-research)"
 
 EXPECTED_ROWS = 3643
 EXPECTED_HEADER = ["NUM","NAME","OCCU","DATE","PLACE","CY","C2","LON","LAT","1955"]
@@ -34,15 +34,51 @@ HUMAN_QID = "Q5"
 ALLOWED_PROPERTIES = ("P31", "P569")
 FORBIDDEN_PROPERTIES = ("P570", "P509", "P20", "P119")
 
-_tls = threading.local()
+
+# Wikimedia 2026 global API rate limits apply across Action/REST APIs.
+# Keep a single process-wide gate so worker threads cannot burst past the service.
+_rate_lock = threading.Lock()
+_last_request_at = 0.0
+_blocked_until = 0.0
+MIN_REQUEST_INTERVAL_SECONDS = 0.50  # <= ~120 req/min, below 200 req/min User-Agent-only ceiling.
+
+def _rate_wait():
+    global _last_request_at
+    while True:
+        with _rate_lock:
+            now = time.monotonic()
+            wait_for = max(
+                0.0,
+                _blocked_until - now,
+                MIN_REQUEST_INTERVAL_SECONDS - (now - _last_request_at),
+            )
+            if wait_for <= 0:
+                _last_request_at = now
+                return
+        time.sleep(min(wait_for, 5.0))
+
+def _rate_block(seconds: float):
+    global _blocked_until
+    with _rate_lock:
+        _blocked_until = max(_blocked_until, time.monotonic() + max(0.0, seconds))
 
 def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
-def http_json(url: str, params: dict | None = None, *, method: str = "GET", timeout: int = 60, retries: int = 7):
-    headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+def http_json(url: str, params: dict | None = None, *, method: str = "GET", timeout: int = 60, retries: int = 20):
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Accept": "application/json",
+        "Accept-Encoding": "gzip, deflate",
+    }
     body = None
     request_url = url
+    params = dict(params or {})
+
+    # Action API etiquette: non-interactive clients should use maxlag.
+    if url == API:
+        params.setdefault("maxlag", 5)
+
     if params:
         encoded = urlencode(params).encode("utf-8")
         if method == "POST":
@@ -50,18 +86,59 @@ def http_json(url: str, params: dict | None = None, *, method: str = "GET", time
             headers["Content-Type"] = "application/x-www-form-urlencoded; charset=UTF-8"
         else:
             request_url = url + "?" + encoded.decode("ascii")
+
     last = None
     for attempt in range(retries):
+        _rate_wait()
         try:
             req = Request(request_url, data=body, headers=headers, method=method)
             with urlopen(req, timeout=timeout) as r:
-                return json.loads(r.read().decode("utf-8"))
-        except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as e:
+                raw = r.read()
+                # urllib normally handles neither gzip nor deflate automatically.
+                encoding = (r.headers.get("Content-Encoding") or "").lower()
+                if encoding == "gzip":
+                    import gzip
+                    raw = gzip.decompress(raw)
+                elif encoding == "deflate":
+                    import zlib
+                    raw = zlib.decompress(raw)
+                return json.loads(raw.decode("utf-8"))
+        except HTTPError as e:
             last = e
             code = getattr(e, "code", None)
-            if code is not None and code not in (429, 500, 502, 503, 504):
+            if code not in (429, 500, 502, 503, 504):
                 raise
-            time.sleep(min(30, 1.5 ** attempt))
+
+            retry_after = None
+            try:
+                retry_after = e.headers.get("Retry-After")
+            except Exception:
+                pass
+
+            if retry_after:
+                try:
+                    delay = float(retry_after)
+                except ValueError:
+                    delay = 60.0
+            elif code == 429:
+                delay = max(60.0, min(300.0, 2.0 ** min(attempt, 8)))
+            else:
+                delay = min(120.0, 2.0 ** min(attempt, 7))
+
+            # One 429 pauses ALL worker threads, not just the failing one.
+            _rate_block(delay)
+            print(
+                f"WIKIMEDIA_BACKOFF code={code} attempt={attempt+1}/{retries} "
+                f"delay={delay:.1f}s",
+                flush=True,
+            )
+            time.sleep(min(delay, 5.0))  # remaining wait is enforced by _rate_wait()
+        except (URLError, TimeoutError, json.JSONDecodeError) as e:
+            last = e
+            delay = min(60.0, 1.5 ** attempt)
+            _rate_block(delay)
+            time.sleep(min(delay, 5.0))
+
     raise RuntimeError(f"HTTP failed after retries: {last}")
 
 def normalize_name(s: str) -> str:
@@ -299,6 +376,7 @@ def main():
     ap.add_argument("output_csv")
     ap.add_argument("--workers", type=int, default=4)
     args = ap.parse_args()
+    args.workers = max(1, min(args.workers, 2))  # Wikimedia-friendly hard cap
 
     src = Path(args.a2_csv)
     out = Path(args.output_csv)
