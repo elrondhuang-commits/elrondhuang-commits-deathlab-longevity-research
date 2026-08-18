@@ -5,7 +5,7 @@ import csv, hashlib, io, sys
 
 URL = "https://raw.githubusercontent.com/tig12/g5/bf0db345b58127a438121b74ebf4ad843243a573/data/db/init/lerrcp-marked/A2.csv"
 EXPECTED_GIT_BLOB_SHA1 = "0b58382c3213900e03960bdc4046dacb7f26b6a2"
-EXPECTED_BYTES = 529373
+EXPECTED_BYTES = 351839
 EXPECTED_ROWS = 3643
 EXPECTED_HEADER = ["NUM","NAME","OCCU","DATE","PLACE","CY","C2","LON","LAT","1955"]
 
