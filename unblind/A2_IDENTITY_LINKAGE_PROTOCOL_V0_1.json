@@ -1,0 +1,69 @@
+{
+  "protocol_name": "A2_WIKIDATA_IDENTITY_LINKAGE_V0_1_FROZEN",
+  "created_before_death_truth_access": true,
+  "frozen_prediction_sha256": "f213787a1bc950313acc4a06d6c9f952a904cdcf6540b616389f53ca7b94cdcc",
+  "source": {
+    "dataset": "Gauquelin LERRCP A2 via tig12/g5",
+    "commit": "bf0db345b58127a438121b74ebf4ad843243a573",
+    "path": "data/db/init/lerrcp-marked/A2.csv",
+    "git_blob_sha1": "0b58382c3213900e03960bdc4046dacb7f26b6a2",
+    "rows": 3643
+  },
+  "identity_linkage_inputs": [
+    "A2 NUM",
+    "A2 NAME",
+    "A2 birth date derived from DATE",
+    "Wikidata QID candidate search labels/matched text",
+    "Wikidata P31",
+    "Wikidata P569 and its precision"
+  ],
+  "candidate_search": {
+    "endpoint": "MediaWiki Action API wbsearchentities",
+    "languages_in_order": [
+      "en",
+      "fr",
+      "de",
+      "it"
+    ],
+    "query_variants_in_order": [
+      "raw",
+      "rotate_first_token_to_end"
+    ],
+    "limit_per_search": 10,
+    "descriptions_may_be_present_in_search_payload_but_are_ignored_and_not_persisted": true
+  },
+  "candidate_metadata": {
+    "endpoint": "Wikidata Query Service",
+    "properties_requested": [
+      "P31",
+      "P569"
+    ],
+    "forbidden_before_linkage_hash": [
+      "P570",
+      "P509",
+      "P20",
+      "P119"
+    ],
+    "human_requirement": "P31 contains Q5",
+    "birth_date_requirement": "P569 precision >= day and absolute date difference <= 1 day"
+  },
+  "name_rules": {
+    "normalization": "Unicode NFKD; remove diacritics; lowercase; non-alnum to spaces; collapse spaces",
+    "EXACT_TOKEN_SIGNATURE": "sorted normalized token lists exactly equal",
+    "SUBSET_TOKEN_MATCH": "one token set is subset of the other, at least 2 shared tokens, smaller/larger coverage >= 2/3",
+    "eligible_name_classes": [
+      "EXACT_TOKEN_SIGNATURE",
+      "SUBSET_TOKEN_MATCH"
+    ]
+  },
+  "resolution_rule": [
+    "reject non-human candidates",
+    "reject candidates without day-precision P569",
+    "reject candidates with birth-date difference > 1 day",
+    "reject candidates without eligible name match",
+    "rank remaining by exact birth date over +/-1 day, then exact token signature over subset token match",
+    "link only if the highest rank is unique; otherwise AMBIGUOUS"
+  ],
+  "outcome_rule": "No P570 or other death/outcome field may be queried until A2_identity_links.csv is SHA-256 frozen.",
+  "go_no_go_after_stage_a": "Inspect blind linkage coverage before any death-truth query. Do not tune using outcomes."
+}
