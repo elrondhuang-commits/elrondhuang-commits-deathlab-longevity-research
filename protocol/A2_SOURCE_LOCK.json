@@ -1,0 +1,23 @@
+{
+  "source": "Gauquelin LERRCP A2 via tig12/g5",
+  "repository": "tig12/g5",
+  "commit": "bf0db345b58127a438121b74ebf4ad843243a573",
+  "path": "data/db/init/lerrcp-marked/A2.csv",
+  "raw_url": "https://raw.githubusercontent.com/tig12/g5/bf0db345b58127a438121b74ebf4ad843243a573/data/db/init/lerrcp-marked/A2.csv",
+  "git_blob_sha1": "0b58382c3213900e03960bdc4046dacb7f26b6a2",
+  "byte_size": 529373,
+  "stored_row_count": 3643,
+  "expected_header": [
+    "NUM",
+    "NAME",
+    "OCCU",
+    "DATE",
+    "PLACE",
+    "CY",
+    "C2",
+    "LON",
+    "LAT",
+    "1955"
+  ],
+  "outcome_columns_present": false
+}
