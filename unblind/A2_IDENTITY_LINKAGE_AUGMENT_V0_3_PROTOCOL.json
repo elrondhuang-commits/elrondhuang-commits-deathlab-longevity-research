@@ -1,0 +1,39 @@
+{
+  "protocol_name": "A2_WIKIDATA_IDENTITY_LINKAGE_AUGMENT_V0_3_FROZEN",
+  "created_before_death_truth_access": true,
+  "base_linkage_sha256": "a3080e44b50382665d063dc2d7249f764a0d77efc368535e2581b0d2a50c7982",
+  "base_linked": 1823,
+  "base_frozen_prediction_overlap": 725,
+  "death_truth_accessed": false,
+  "prediction_used_for_linkage": false,
+  "uniformity_rule": "Apply to every V0.2 unresolved record; never load prediction labels/status.",
+  "allowed_identity_data": [
+    "A2 NAME",
+    "A2 DATE",
+    "A2 PLACE",
+    "Wikidata P31",
+    "P569",
+    "P19",
+    "labels",
+    "aliases"
+  ],
+  "forbidden_before_linkage_hash": [
+    "P570",
+    "P509",
+    "P20",
+    "P119"
+  ],
+  "candidate_generation": "Q5 humans with day-precision P569 exactly equal to frozen A2 birth date.",
+  "name_ranking": [
+    "EXACT_TOKEN_SIGNATURE",
+    "SUBSET_TOKEN_MATCH",
+    "SURNAME_EXACT_GIVEN_INITIAL",
+    "SURNAME_EDIT1_GIVEN_INITIAL if surname length>=6"
+  ],
+  "weak_match_guard": [
+    "exact birth date only",
+    "unique top rank required",
+    "P19 place may only break a tied top rank",
+    "existing V0.2 links immutable"
+  ]
+}
