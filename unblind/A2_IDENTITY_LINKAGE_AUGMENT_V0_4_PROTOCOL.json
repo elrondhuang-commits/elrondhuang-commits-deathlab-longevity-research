@@ -1,0 +1,45 @@
+{
+  "protocol_name": "A2_WIKIDATA_IDENTITY_LINKAGE_AUGMENT_V0_4_FINAL_A2_FROZEN",
+  "created_before_death_truth_access": true,
+  "base_linkage_sha256": "94487b31133d8c198adad2b7c2e2c48b405286fb4003295b4a64abe2e272b646",
+  "base_linked": 1975,
+  "base_frozen_prediction_overlap": 786,
+  "death_truth_accessed": false,
+  "prediction_used_for_linkage": false,
+  "purpose": "Final A2-only outcome-blind linkage augmentation. If the preregistered efficacy N gate remains unreachable, stop weakening A2 identity rules and pivot to a separately frozen second cohort.",
+  "uniformity_rule": "Apply to every V0.3 unresolved record; prediction labels/statuses are never loaded.",
+  "allowed_identity_data": [
+    "A2 NAME",
+    "DATE",
+    "PLACE",
+    "LAT",
+    "LON",
+    "Wikidata P31",
+    "P569",
+    "P19",
+    "P625",
+    "labels",
+    "aliases"
+  ],
+  "forbidden_before_linkage_hash": [
+    "P570",
+    "P509",
+    "P20",
+    "P119"
+  ],
+  "candidate_generation": "Q5 human with exact day-precision P569 equal to frozen A2 birth date.",
+  "place_evidence": {
+    "VERY_STRONG": "P19 coordinate within 20 km of frozen A2 coordinates",
+    "STRONG": "P19 normalized place-name match OR coordinate within 50 km",
+    "NONE": "otherwise"
+  },
+  "name_evidence": {
+    "4": "exact token signature",
+    "3": "subset token match from V0.1",
+    "2": "A2 surname exactly matches candidate edge token",
+    "1": "at least two A2 name tokens each edit-distance <=1 to distinct candidate tokens",
+    "0": "reject"
+  },
+  "resolution": "Require place_strength>=1 and name_strength>=1. Rank by place_strength then name_strength, unique top only. Existing V0.3 links immutable.",
+  "stop_rule": "No A2 v0.5 with weaker identity evidence if V0.4 remains below the pre-unblind N target."
+}
