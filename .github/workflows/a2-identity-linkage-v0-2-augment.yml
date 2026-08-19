@@ -1,0 +1,96 @@
+name: A2 identity linkage augment v0.2
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  augment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify V0.2 linkage logic
+        run: |
+          python -m pip install pytest==8.4.1
+          pytest -q unblind/test_augment_logic.py
+
+      - name: Download frozen V0.1 linkage artifact
+        run: |
+          python unblind/download_latest_artifact.py \
+            deathlab-a2-identity-linkage-freeze artifacts/base
+
+      - name: Materialize exact A2 birth corpus
+        run: python scripts/materialize_a2.py artifacts/A2.frozen.csv
+
+      - name: Verify V0.1 outcome-blind commitment
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib
+          P=pathlib.Path
+          expected="7f04b2b6dfa052c5a87871ef1caea01e18f7740d9b22cc9e2739bf5dff859191"
+          links=P("artifacts/base/A2_identity_links.csv")
+          side=P("artifacts/base/A2_identity_links.sha256").read_text().split()[0]
+          s=json.load(open("artifacts/base/A2_identity_links.summary.json",encoding="utf-8"))
+          assert hashlib.sha256(links.read_bytes()).hexdigest()==expected==side
+          assert s["linkage_sha256"]==expected
+          assert s["death_truth_accessed"] is False
+          assert s["forbidden_properties_queried"]==[]
+          print("PASS base linkage commitment")
+          PY
+
+      - name: Freeze V0.2 code and protocol before augmentation
+        run: |
+          mkdir -p artifacts
+          sha256sum unblind/augment_by_birthdate.py > artifacts/V0_2_CODE.sha256
+          sha256sum unblind/A2_IDENTITY_LINKAGE_AUGMENT_V0_2_PROTOCOL.json > artifacts/V0_2_PROTOCOL.sha256
+          cat artifacts/V0_2_CODE.sha256
+          cat artifacts/V0_2_PROTOCOL.sha256
+
+      - name: Run prediction-blind outcome-blind birthdate augmentation
+        run: |
+          python unblind/augment_by_birthdate.py \
+            --a2 artifacts/A2.frozen.csv \
+            --base-links artifacts/base/A2_identity_links.csv \
+            --base-links-sha artifacts/base/A2_identity_links.sha256 \
+            --base-summary artifacts/base/A2_identity_links.summary.json \
+            --out artifacts/A2_identity_links_v0_2.csv
+
+      - name: Verify V0.2 freeze
+        run: |
+          wc -l artifacts/A2_identity_links_v0_2.csv
+          cat artifacts/A2_identity_links_v0_2.sha256
+          cat artifacts/A2_identity_links_v0_2.summary.json
+          python - <<'PY'
+          import csv,json
+          rows=list(csv.DictReader(open("artifacts/A2_identity_links_v0_2.csv",encoding="utf-8",newline="")))
+          assert len(rows)==3643
+          assert len({r["NUM"] for r in rows})==3643
+          s=json.load(open("artifacts/A2_identity_links_v0_2.summary.json",encoding="utf-8"))
+          assert s["death_truth_accessed"] is False
+          assert s["prediction_used_for_linkage"] is False
+          assert s["forbidden_properties_queried"]==[]
+          print("PASS V0.2 pre-P570 linkage freeze")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deathlab-a2-identity-linkage-freeze-v0-2
+          path: |
+            artifacts/A2_identity_links_v0_2.csv
+            artifacts/A2_identity_links_v0_2.sha256
+            artifacts/A2_identity_links_v0_2.summary.json
+            artifacts/V0_2_CODE.sha256
+            artifacts/V0_2_PROTOCOL.sha256
+          if-no-files-found: error
+          retention-days: 90
