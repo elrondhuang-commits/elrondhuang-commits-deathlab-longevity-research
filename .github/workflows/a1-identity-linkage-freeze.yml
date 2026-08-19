@@ -1,0 +1,70 @@
+name: A1 identity linkage freeze
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linkage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify linkage logic
+        run: |
+          python -m pip install pytest==8.4.1
+          pytest -q unblind/test_a1_linkage_logic.py
+
+      - name: Materialize exact A1 birth corpus
+        run: |
+          mkdir -p artifacts
+          python unblind/materialize_a1_linkage.py artifacts/A1.frozen.csv
+
+      - name: Freeze code and protocol before linkage
+        run: |
+          sha256sum unblind/link_a1_wikidata.py > artifacts/A1_LINKAGE_CODE.sha256
+          sha256sum unblind/A1_IDENTITY_LINKAGE_V0_1_PROTOCOL.json > artifacts/A1_LINKAGE_PROTOCOL.sha256
+          sha256sum artifacts/A1.frozen.csv > artifacts/A1_SOURCE.sha256
+          cat artifacts/*.sha256
+
+      - name: Run outcome-blind identity linkage
+        run: |
+          python unblind/link_a1_wikidata.py \
+            --a1 artifacts/A1.frozen.csv \
+            --out artifacts/A1_identity_links_v0_1.csv
+
+      - name: Verify linkage freeze
+        run: |
+          python - <<'PY'
+          import csv,json,hashlib
+          rows=list(csv.DictReader(open("artifacts/A1_identity_links_v0_1.csv",encoding="utf-8",newline="")))
+          assert len(rows)==2087
+          assert len({r["NUM"] for r in rows})==2087
+          s=json.load(open("artifacts/A1_identity_links_v0_1.summary.json"))
+          assert s["source_rows"]==2087
+          assert s["death_truth_accessed"] is False
+          assert s["prediction_used_for_linkage"] is False
+          assert s["forbidden_properties_queried"]==[]
+          assert hashlib.sha256(open("artifacts/A1_identity_links_v0_1.csv","rb").read()).hexdigest()==s["linkage_sha256"]
+          print(json.dumps(s,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deathlab-a1-identity-linkage-freeze
+          path: |
+            artifacts/A1_identity_links_v0_1.csv
+            artifacts/A1_identity_links_v0_1.sha256
+            artifacts/A1_identity_links_v0_1.summary.json
+            artifacts/A1_LINKAGE_CODE.sha256
+            artifacts/A1_LINKAGE_PROTOCOL.sha256
+            artifacts/A1_SOURCE.sha256
+          if-no-files-found: error
+          retention-days: 90
