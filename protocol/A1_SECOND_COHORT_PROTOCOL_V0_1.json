@@ -1,8 +1,8 @@
 {
-  "protocol_name": "A1_SECOND_COHORT_BIRTH_ONLY_PREDICTION_V0_1_FROZEN",
+  "protocol_name": "A1_SECOND_COHORT_BIRTH_ONLY_PREDICTION_V0_1_1_SOURCE_COUNT_HOTFIX",
   "created_before_death_truth_access": true,
-  "cohort": "Gauquelin A1 sports champions",
-  "expected_rows": 2088,
+  "cohort": "Gauquelin A1 sports champions (historical booklet title: 2088; commit-pinned g5 A1.csv: 2087 records)",
+  "expected_rows": 2087,
   "source": {
     "repository": "tig12/g5",
     "commit": "bf0db345b58127a438121b74ebf4ad843243a573",
@@ -28,7 +28,7 @@
     "required_sha256": "db33e2a42cba698b15a6ab14844ef306b777d4986baf0ed8107581aa70c1aa8e",
     "spec": "protocol/CHALLENGER_SPEC_LOCK.json",
     "required_spec_sha256": "ea773ac338dde73084666edb63988bd6716a2efe7493c599ea14e9fd7f091a4c",
-    "relationship_to_A2": "Exact same frozen challenger implementation and specification used for the A2 prediction commitment. Only the cohort wrapper is generalized from fixed N=3643 to preregistered N=2088."
+    "relationship_to_A2": "Exact same frozen challenger implementation and specification used for the A2 prediction commitment. Only the cohort wrapper is generalized from fixed N=3643 to preregistered N=2087."
   },
   "eligibility": {
     "required_fields": [
@@ -41,5 +41,12 @@
     "duplicates": "FAIL_CLOSED"
   },
   "outcome_rule": "No P570/death truth may be queried before the A1 prediction CSV and SHA-256 are frozen.",
-  "cross_cohort_rule": "A1/A2 identity duplicates, if any, must be removed by birth-identity evidence before any combined efficacy unblind; outcome values may not influence deduplication."
+  "cross_cohort_rule": "A1/A2 identity duplicates, if any, must be removed by birth-identity evidence before any combined efficacy unblind; outcome values may not influence deduplication.",
+  "source_count_addendum": {
+    "historical_LERRCP_title_count": 2088,
+    "commit_pinned_g5_A1_csv_rows": 2087,
+    "decision": "Use the 2087 physical records present in the commit-pinned g5 A1.csv. Do not reconstruct or append an inferred missing 2088th record.",
+    "scientific_effect": "Engineering/source-contract correction only. Frozen predictor implementation and specification are unchanged.",
+    "outcome_accessed": false
+  }
 }
