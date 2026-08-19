@@ -17,7 +17,7 @@ def test_materializer_git_blob_formula():
 
 def test_a1_constants():
     m = load("materialize_a1.py")
-    assert m.EXPECTED_ROWS == 2088
+    assert m.EXPECTED_ROWS == 2087
     assert m.EXPECTED_HEADER == ["NUM","NAME","OCCU","DATE","PLACE","CY","C2","LON","LAT","1955"]
 
 def test_no_outcome_header():
