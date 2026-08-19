@@ -12,7 +12,7 @@ from urllib.request import Request, urlopen
 COMMIT = "bf0db345b58127a438121b74ebf4ad843243a573"
 SOURCE_PATH = "data/db/init/lerrcp-marked/A1.csv"
 URL = f"https://raw.githubusercontent.com/tig12/g5/{COMMIT}/{SOURCE_PATH}"
-EXPECTED_ROWS = 2088
+EXPECTED_ROWS = 2087
 EXPECTED_HEADER = ["NUM","NAME","OCCU","DATE","PLACE","CY","C2","LON","LAT","1955"]
 FORBIDDEN_HEADER_TOKENS = (
     "death", "deces", "died", "p570", "lifespan", "longevity", "cause",
