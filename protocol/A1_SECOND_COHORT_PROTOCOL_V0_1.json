@@ -1,0 +1,45 @@
+{
+  "protocol_name": "A1_SECOND_COHORT_BIRTH_ONLY_PREDICTION_V0_1_FROZEN",
+  "created_before_death_truth_access": true,
+  "cohort": "Gauquelin A1 sports champions",
+  "expected_rows": 2088,
+  "source": {
+    "repository": "tig12/g5",
+    "commit": "bf0db345b58127a438121b74ebf4ad843243a573",
+    "path": "data/db/init/lerrcp-marked/A1.csv",
+    "transport": "commit-pinned raw GitHub URL",
+    "expected_header": [
+      "NUM",
+      "NAME",
+      "OCCU",
+      "DATE",
+      "PLACE",
+      "CY",
+      "C2",
+      "LON",
+      "LAT",
+      "1955"
+    ],
+    "source_blob_sha1": "RECORDED_AT_FIRST_MATERIALIZATION",
+    "source_sha256": "RECORDED_AT_FIRST_MATERIALIZATION"
+  },
+  "predictor": {
+    "implementation": "src/deathlab_longevity/challenger.py",
+    "required_sha256": "db33e2a42cba698b15a6ab14844ef306b777d4986baf0ed8107581aa70c1aa8e",
+    "spec": "protocol/CHALLENGER_SPEC_LOCK.json",
+    "required_spec_sha256": "ea773ac338dde73084666edb63988bd6716a2efe7493c599ea14e9fd7f091a4c",
+    "relationship_to_A2": "Exact same frozen challenger implementation and specification used for the A2 prediction commitment. Only the cohort wrapper is generalized from fixed N=3643 to preregistered N=2088."
+  },
+  "eligibility": {
+    "required_fields": [
+      "DATE",
+      "LON",
+      "LAT"
+    ],
+    "missing_required_birth_field": "INELIGIBLE_MISSING_BIRTH_FIELDS",
+    "outcome_fields_forbidden": true,
+    "duplicates": "FAIL_CLOSED"
+  },
+  "outcome_rule": "No P570/death truth may be queried before the A1 prediction CSV and SHA-256 are frozen.",
+  "cross_cohort_rule": "A1/A2 identity duplicates, if any, must be removed by birth-identity evidence before any combined efficacy unblind; outcome values may not influence deduplication."
+}
