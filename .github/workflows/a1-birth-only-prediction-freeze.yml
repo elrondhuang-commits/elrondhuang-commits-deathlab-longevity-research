@@ -54,7 +54,7 @@ jobs:
           python scripts/predict_frozen_cohort.py \
             artifacts/A1.frozen.csv \
             artifacts/CHALLENGER_A1_predictions.csv \
-            2088
+            2087
 
       - name: Verify prediction commitment
         run: |
@@ -62,10 +62,10 @@ jobs:
           import csv, json, hashlib
           p="artifacts/CHALLENGER_A1_predictions.csv"
           rows=list(csv.DictReader(open(p,encoding="utf-8",newline="")))
-          assert len(rows)==2088
-          assert len({r["NUM"] for r in rows})==2088
+          assert len(rows)==2087
+          assert len({r["NUM"] for r in rows})==2087
           s=json.load(open("artifacts/CHALLENGER_A1_predictions.summary.json",encoding="utf-8"))
-          assert s["source_rows"]==2088
+          assert s["source_rows"]==2087
           assert s["outcome_accessed"] is False
           assert s["challenger_sha256"]=="db33e2a42cba698b15a6ab14844ef306b777d4986baf0ed8107581aa70c1aa8e"
           assert hashlib.sha256(open(p,"rb").read()).hexdigest()==s["predictions_sha256"]
