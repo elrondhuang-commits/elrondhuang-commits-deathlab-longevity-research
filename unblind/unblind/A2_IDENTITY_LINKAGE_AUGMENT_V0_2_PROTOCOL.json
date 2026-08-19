@@ -1,0 +1,32 @@
+{
+  "protocol_name": "A2_WIKIDATA_IDENTITY_LINKAGE_AUGMENT_V0_2_FROZEN",
+  "created_before_death_truth_access": true,
+  "base_protocol": "A2_WIKIDATA_IDENTITY_LINKAGE_V0_1_FROZEN",
+  "base_linkage_sha256": "7f04b2b6dfa052c5a87871ef1caea01e18f7740d9b22cc9e2739bf5dff859191",
+  "base_linked": 1523,
+  "base_total": 3643,
+  "reason_for_augmentation": "Base outcome-blind linkage cannot reach the preregistered N>=1000 covered-efficacy gate because only 610 base-linked records overlap frozen non-ABSTAIN predictions; no death truth has been accessed.",
+  "anti_selection_rule": "Augmentation operates uniformly on every unresolved base-linkage record and does not read frozen prediction labels or statuses.",
+  "candidate_generation": {
+    "pass_1": "Wikidata humans (P31=Q5) with non-deprecated day-precision P569 exactly equal to frozen A2 birth date.",
+    "pass_2": "Only for still-unresolved records, same retrieval for frozen A2 birth date +/- 1 day.",
+    "text_fetch": "wbgetentities labels+aliases in en,fr,de,it,mul, batched by QID.",
+    "name_resolution": "Exact copy of V0.1 normalize_name/tokens/token_signature/name_class rules embedded in V0.2.",
+    "ranking": "exact birth date > +/-1 day; EXACT_TOKEN_SIGNATURE > SUBSET_TOKEN_MATCH; unique top rank only.",
+    "existing_links": "Never modify a V0.1 LINKED QID."
+  },
+  "allowed_identity_properties": [
+    "P31",
+    "P569",
+    "labels",
+    "aliases"
+  ],
+  "forbidden_before_linkage_hash": [
+    "P570",
+    "P509",
+    "P20",
+    "P119"
+  ],
+  "outcome_accessed": false,
+  "prediction_used_for_linkage": false
+}
