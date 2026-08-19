@@ -1,0 +1,57 @@
+{
+  "protocol_name": "A1_WIKIDATA_IDENTITY_LINKAGE_V0_1_FROZEN",
+  "created_before_death_truth_access": true,
+  "cohort": "Gauquelin A1 sports champions, commit-pinned g5 A1.csv",
+  "source": {
+    "repository": "tig12/g5",
+    "commit": "bf0db345b58127a438121b74ebf4ad843243a573",
+    "path": "data/db/init/lerrcp-marked/A1.csv",
+    "rows": 2087,
+    "sha256": "613b965d54ba429231167034d7564ac2db9aabc6f5e6821810518b7f80a88913",
+    "git_blob_sha1": "8832bdb1d0ba7d937b7b2da9a50762c5ad7d126f"
+  },
+  "frozen_prediction_sha256": "6caab259e169bdaf196b0dc6096ba3c1659811206dbad7f4f87272704dc3aa0f",
+  "prediction_used_for_linkage": false,
+  "death_truth_accessed": false,
+  "allowed_identity_data": [
+    "A1 NUM",
+    "NAME",
+    "DATE",
+    "PLACE",
+    "LAT",
+    "LON",
+    "Wikidata P31",
+    "P569",
+    "P19",
+    "P625",
+    "labels",
+    "aliases"
+  ],
+  "forbidden_before_linkage_hash": [
+    "P570",
+    "P509",
+    "P20",
+    "P119"
+  ],
+  "candidate_generation": [
+    "Q5 humans with day-precision P569 exactly equal to A1 birth date.",
+    "Only if unresolved, Q5 humans with day-precision P569 +/-1 day."
+  ],
+  "name_rules": [
+    "EXACT_TOKEN_SIGNATURE",
+    "SUBSET_TOKEN_MATCH with >=2 shared tokens and >=2/3 smaller/larger token coverage"
+  ],
+  "place_tiebreak": [
+    "Use P19 label or P625 only to break a tied top name/date rank.",
+    "Place text match or <=50 km coordinate match qualifies.",
+    "Never allow place alone to create a link."
+  ],
+  "ranking": [
+    "exact birth date > +/-1 day",
+    "EXACT_TOKEN_SIGNATURE > SUBSET_TOKEN_MATCH",
+    "unique highest rank only",
+    "tied highest rank may resolve only by unique place match"
+  ],
+  "uniformity_rule": "Apply to all 2087 A1 records. Do not load prediction labels/status during linkage.",
+  "cross_cohort_rule": "A1/A2 duplicate identities, if any, must be removed after both linkages are frozen and before any combined efficacy unblind, using only identity evidence/QIDs and birth data."
+}
