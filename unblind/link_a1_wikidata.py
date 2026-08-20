@@ -9,8 +9,7 @@ from urllib.request import Request,urlopen
 from urllib.error import HTTPError,URLError
 
 SPARQL="https://query.wikidata.org/sparql"
-API="https://www.wikidata.org/w/api.php"
-UA="DeathLab-Longevity-Research-A1-Linkage/0.1.1-transport-hotfix"
+UA="DeathLab-Longevity-Research-A1-Linkage/0.1.2-wdqs-only-hotfix"
 FORBIDDEN=("P570","P509","P20","P119")
 LANGS="en|fr|de|it|es|nl|pt|pl|ru|sv|no|da|cs|hu|ro|el|la|mul"
 ROWS=2087
@@ -62,10 +61,10 @@ consecutive_429=0
 # - WDQS: ~20 requests/minute
 # - Wikidata API: ~60 requests/minute
 # - all endpoints obey the same global 429 cooldown
-MIN_BY_HOST={"wdqs":3.0,"api":1.0}
+MIN_BY_HOST={"wdqs":3.0,"other":3.0}
 
 def _host_key(url):
-    return "wdqs" if url==SPARQL else "api"
+    return "wdqs" if url==SPARQL else "other"
 
 def gate(url):
     global last_by_host
@@ -170,18 +169,36 @@ FILTER(?precision=11)
         print(f"birthdate batches {min(i+batch,len(ds))}/{len(ds)}",flush=True)
     return out
 
-def entity_texts(qids,batch=50):
-    out=defaultdict(set); qs=sorted(qids)
+def entity_texts(qids,batch=80):
+    """Fetch allowed labels/aliases through WDQS only."""
+    out=defaultdict(set)
+    qs=sorted(qids)
+    langs=[x for x in LANGS.split("|") if x]
+    lang_filter=",".join(json.dumps(x) for x in langs)
     for i in range(0,len(qs),batch):
-        data=req(API,{"action":"wbgetentities","ids":"|".join(qs[i:i+batch]),
-          "props":"labels|aliases","languages":LANGS,"languagefallback":1,
-          "format":"json","formatversion":2,"maxlag":5})
-        for q,e in data.get("entities",{}).items():
-            for obj in (e.get("labels") or {}).values():
-                if isinstance(obj,dict) and obj.get("value"): out[q].add(obj["value"])
-            for arr in (e.get("aliases") or {}).values():
-                for obj in arr or []:
-                    if isinstance(obj,dict) and obj.get("value"): out[q].add(obj["value"])
+        vals=" ".join(f"wd:{q}" for q in qs[i:i+batch])
+        q=f"""PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT DISTINCT ?item ?text WHERE {{
+  VALUES ?item {{ {vals} }}
+  {{
+    ?item rdfs:label ?text .
+  }}
+  UNION
+  {{
+    ?item skos:altLabel ?text .
+  }}
+  FILTER(LANG(?text) IN ({lang_filter}))
+}}"""
+        for forbidden in FORBIDDEN:
+            assert forbidden not in q
+        data=req(SPARQL,{"query":q,"format":"json"})
+        for row in data.get("results",{}).get("bindings",[]):
+            qid=row.get("item",{}).get("value","").rsplit("/",1)[-1]
+            text=row.get("text",{}).get("value","")
+            if re.fullmatch(r"Q\d+",qid) and text:
+                out[qid].add(text)
+        print(f"WDQS label/alias batches {min(i+batch,len(qs))}/{len(qs)}",flush=True)
     return {q:sorted(v) for q,v in out.items()}
 
 def place_meta(qids,batch=100):
