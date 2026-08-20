@@ -1,0 +1,70 @@
+{
+  "claim_boundary": "PASS is evidence of ordinal lifespan signal in the frozen linked/P570-resolved A1+A2 subset. It is not proof of deterministic individual lifespan prediction.",
+  "created_before_P570_access": true,
+  "cross_cohort_deduplication": {
+    "identity_key": "Wikidata QID",
+    "outcome_may_not_influence_deduplication": true,
+    "rule": "Fail closed before P570 if the same linked QID appears in both cohorts. Current frozen pre-unblind audit has zero duplicates."
+  },
+  "death_statement_policy": {
+    "accepted_precision": {
+      "10": "month",
+      "11": "day",
+      "9": "year"
+    },
+    "calendar": "Gregorian Q1985727 only",
+    "ignore_deprecated_rank": true,
+    "missing_P570": "NO_DEATH_TRUTH; excluded and never treated as alive/LONG",
+    "multiple_statements": "accept only when selected usable statements imply the same truth bin",
+    "rank_preference": "preferred if any, otherwise normal",
+    "source": "Wikidata P570 only"
+  },
+  "evaluation": {
+    "covered_eval": "LINKED + resolved P570 truth + frozen prediction SHORT/MEDIUM/LONG",
+    "ordinal_encoding": {
+      "LONG": 2,
+      "MEDIUM": 1,
+      "SHORT": 0
+    },
+    "primary_baseline": "COHORT_STRATIFIED_BEST_CONSTANT_ORACLE: choose best constant separately inside A1 and A2, then aggregate absolute error over all covered_eval rows",
+    "primary_delta": "challenger pooled MAE - cohort-stratified oracle pooled MAE; negative is better",
+    "primary_metric": "pooled ordinal MAE across A1+A2 covered_eval",
+    "secondary": [
+      "pooled accuracy",
+      "pooled Spearman rho",
+      "3x3 confusion matrix",
+      "per-cohort metrics",
+      "truth/linkage/prediction coverage"
+    ]
+  },
+  "first_signal_gate": [
+    "actual Ncovered_eval >= 1000",
+    "primary_delta < 0",
+    "stratified bootstrap 95% CI upper bound < 0",
+    "within-cohort stratified permutation p < 0.05"
+  ],
+  "frozen_inputs": {
+    "A1_linkage_sha256": "3a39f02448a74ea9e96595f7f8e1e8d00cd193a913bf0912fc79891d73128142",
+    "A1_prediction_sha256": "6caab259e169bdaf196b0dc6096ba3c1659811206dbad7f4f87272704dc3aa0f",
+    "A2_linkage_sha256": "26b32c2b0874f236b407e9237f1f1ac20b3a9fafa8833ca6b00c0cc41251503d",
+    "A2_prediction_sha256": "f213787a1bc950313acc4a06d6c9f952a904cdcf6540b616389f53ca7b94cdcc",
+    "frozen_challenger_code_sha256": "db33e2a42cba698b15a6ab14844ef306b777d4986baf0ed8107581aa70c1aa8e",
+    "frozen_challenger_spec_sha256": "ea773ac338dde73084666edb63988bd6716a2efe7493c599ea14e9fd7f091a4c"
+  },
+  "inference": {
+    "bootstrap": "stratified by cohort; resample within A1 and A2 preserving each cohort's observed covered_eval N",
+    "bootstrap_iterations": 10000,
+    "permutation": "shuffle truth labels only within cohort, preserving each cohort truth margins",
+    "permutation_iterations": 10000,
+    "reason": "Prevents cohort-level age/truth composition from creating a spurious pooled signal.",
+    "seed": 20260820
+  },
+  "protocol_name": "A1_A2_COMBINED_DEATH_TRUTH_UNBLIND_EFFICACY_V0_2_FROZEN",
+  "relationship_to_original_A2_protocol": "This is a new combined-cohort pre-unblind protocol. It does not retroactively redefine the original A2-only preregistration.",
+  "truth_bins": {
+    "AMBIGUOUS_BOUNDARY": "death interval crosses 32nd/64th birthday threshold",
+    "LONG": "entirely on/after 64th birthday",
+    "MEDIUM": "entirely on/after 32nd birthday and before 64th birthday",
+    "SHORT": "death interval entirely before 32nd birthday"
+  }
+}
