@@ -1,0 +1,27 @@
+{
+  "P570_accessed": false,
+  "a1": {
+    "covered_predictions": 822,
+    "linkage_sha256": "3a39f02448a74ea9e96595f7f8e1e8d00cd193a913bf0912fc79891d73128142",
+    "linked": 1258,
+    "linked_and_covered": 508,
+    "prediction_sha256": "6caab259e169bdaf196b0dc6096ba3c1659811206dbad7f4f87272704dc3aa0f",
+    "rows": 2087
+  },
+  "a2": {
+    "covered_predictions": 1453,
+    "linkage_sha256": "26b32c2b0874f236b407e9237f1f1ac20b3a9fafa8833ca6b00c0cc41251503d",
+    "linked": 2091,
+    "linked_and_covered": 826,
+    "prediction_sha256": "f213787a1bc950313acc4a06d6c9f952a904cdcf6540b616389f53ca7b94cdcc",
+    "rows": 3643
+  },
+  "audit_name": "A1_A2_COMBINED_PREUNBLIND_FEASIBILITY_V0_1",
+  "combined_preunblind_max_covered_eval": 1334,
+  "cross_cohort_duplicate_qids_among_all_linked": 0,
+  "cross_cohort_duplicate_qids_among_linked_and_covered": 0,
+  "death_truth_accessed": false,
+  "formal_N_gate": 1000,
+  "interpretation": "Actual Ncovered_eval after P570 can be lower because missing/ambiguous death truth is excluded. This audit only establishes that N>=1000 is mathematically possible before outcome access.",
+  "preunblind_feasibility_gate_PASS": true
+}

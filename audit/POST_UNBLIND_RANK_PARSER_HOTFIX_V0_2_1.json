@@ -1,0 +1,17 @@
+{
+  "P570_accessed_before_hotfix": true,
+  "addendum_name": "COMBINED_STAGE_B_V0_2_1_POST_UNBLIND_RANK_PARSER_HOTFIX",
+  "allowed_fix": "Parser-only normalization of rank URI fragment. No predictor, linkage, death-bin, baseline, metric, bootstrap, permutation, threshold, or claim-boundary changes.",
+  "bug": "Wikidata rank URI uses fragment syntax ...ontology#NormalRank / #PreferredRank, while v0.2 parser used rsplit('/',1), yielding ontology#NormalRank instead of NormalRank.",
+  "failed_run_observation": "P570 query completed for 3349 linked QIDs, then scorer exited with NO covered truth cases.",
+  "forbidden_changes_after_unblind": [
+    "predictor",
+    "prediction CSV",
+    "identity linkage",
+    "SHORT/MEDIUM/LONG boundaries",
+    "cohort-stratified oracle definition",
+    "bootstrap/permutation design",
+    "N>=1000 gate",
+    "significance threshold"
+  ]
+}
