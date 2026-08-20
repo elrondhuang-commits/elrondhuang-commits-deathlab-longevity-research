@@ -10,7 +10,7 @@ from urllib.error import HTTPError,URLError
 
 SPARQL="https://query.wikidata.org/sparql"
 API="https://www.wikidata.org/w/api.php"
-UA="DeathLab-Longevity-Research-A1-Linkage/0.1"
+UA="DeathLab-Longevity-Research-A1-Linkage/0.1.1-transport-hotfix"
 FORBIDDEN=("P570","P509","P20","P119")
 LANGS="en|fr|de|it|es|nl|pt|pl|ru|sv|no|da|cs|hu|ro|el|la|mul"
 ROWS=2087
@@ -53,36 +53,97 @@ def place_text_match(a,texts):
         if len(a)>=4 and len(b)>=4 and (a in b or b in a):return True
     return False
 
-lock=threading.Lock(); last=0.0; blocked=0.0; MIN=.55
-def gate():
-    global last
+lock=threading.Lock()
+last_by_host={"wdqs":0.0,"api":0.0}
+blocked_until=0.0
+consecutive_429=0
+
+# Transport-only hotfix:
+# - WDQS: ~20 requests/minute
+# - Wikidata API: ~60 requests/minute
+# - all endpoints obey the same global 429 cooldown
+MIN_BY_HOST={"wdqs":3.0,"api":1.0}
+
+def _host_key(url):
+    return "wdqs" if url==SPARQL else "api"
+
+def gate(url):
+    global last_by_host
+    key=_host_key(url)
     while True:
         with lock:
-            now=time.monotonic(); d=max(0.0,blocked-now,MIN-(now-last))
-            if d<=0: last=now; return
-        time.sleep(min(d,5))
-def block(sec):
-    global blocked
-    with lock: blocked=max(blocked,time.monotonic()+sec)
+            now=time.monotonic()
+            d=max(
+                0.0,
+                blocked_until-now,
+                MIN_BY_HOST[key]-(now-last_by_host[key]),
+            )
+            if d<=0:
+                last_by_host[key]=now
+                return
+        time.sleep(min(d,10.0))
 
-def req(url,params,retries=20):
+def block(sec):
+    global blocked_until
+    with lock:
+        blocked_until=max(blocked_until,time.monotonic()+sec)
+
+def req(url,params,retries=24):
+    global consecutive_429
     data=urlencode(params).encode()
-    headers={"User-Agent":UA,"Accept":"application/json","Content-Type":"application/x-www-form-urlencoded"}
+    headers={
+        "User-Agent":UA,
+        "Accept":"application/json",
+        "Content-Type":"application/x-www-form-urlencoded",
+        "Accept-Encoding":"gzip, deflate",
+    }
     err=None
     for i in range(retries):
-        gate()
+        gate(url)
         try:
-            with urlopen(Request(url,data=data,headers=headers,method="POST"),timeout=90) as r:
-                return json.loads(r.read().decode())
+            with urlopen(Request(url,data=data,headers=headers,method="POST"),timeout=120) as r:
+                payload=r.read()
+                # urllib normally transparently handles neither gzip nor deflate;
+                # do not request-compress if the server actually returns encoded bytes.
+                enc=(r.headers.get("Content-Encoding") or "").lower()
+                if enc:
+                    import gzip, zlib
+                    if enc=="gzip":
+                        payload=gzip.decompress(payload)
+                    elif enc=="deflate":
+                        payload=zlib.decompress(payload)
+                consecutive_429=0
+                return json.loads(payload.decode())
         except HTTPError as e:
             err=e
-            if e.code not in (429,500,502,503,504): raise
-            ra=e.headers.get("Retry-After") if e.headers else None
-            try:d=float(ra) if ra else (60 if e.code==429 else min(120,2**min(i,7)))
-            except ValueError:d=60
-            block(d); print(f"BACKOFF {e.code} {d}s",flush=True); time.sleep(min(d,5))
+            if e.code==429:
+                consecutive_429+=1
+                ra=e.headers.get("Retry-After") if e.headers else None
+                try:
+                    retry_after=float(ra) if ra else 0.0
+                except ValueError:
+                    retry_after=0.0
+                # Wikimedia can keep an IP throttled beyond Retry-After.
+                # Escalate hard rather than hammering the endpoint repeatedly.
+                escalation=min(720.0,90.0*(2**min(consecutive_429-1,3)))
+                d=max(retry_after,escalation)
+                block(d)
+                print(
+                    f"BACKOFF 429 {d:.0f}s "
+                    f"(strike={consecutive_429}, endpoint={_host_key(url)})",
+                    flush=True,
+                )
+                continue
+            if e.code not in (500,502,503,504):
+                raise
+            d=min(120.0,5.0*(2**min(i,5)))
+            block(d)
+            print(f"BACKOFF {e.code} {d:.0f}s endpoint={_host_key(url)}",flush=True)
         except (URLError,TimeoutError,json.JSONDecodeError) as e:
-            err=e; d=min(60,1.5**i); block(d); time.sleep(min(d,5))
+            err=e
+            d=min(90.0,3.0*(1.7**min(i,7)))
+            block(d)
+            print(f"BACKOFF transport {d:.0f}s endpoint={_host_key(url)}",flush=True)
     raise RuntimeError(err)
 
 def candidates(dates,batch=20):
@@ -186,9 +247,21 @@ def main():
     for r,_ in unresolved:
         d=datetime.fromisoformat(r["DATE"]).date()
         plusminus_dates.update((d-timedelta(days=1),d+timedelta(days=1)))
-    pm_bydate=candidates(plusminus_dates) if plusminus_dates else {}
+    # Transport/cache hotfix: if a +/-1 date was already part of the exact-date
+    # universe, reuse its frozen-in-memory candidates instead of querying WDQS again.
+    new_pm_dates=plusminus_dates-exact_dates
+    fresh_pm=candidates(new_pm_dates) if new_pm_dates else {}
+    pm_bydate=defaultdict(set)
+    for d in plusminus_dates:
+        if d in exact_dates:
+            pm_bydate[d].update(bydate.get(d,set()))
+        else:
+            pm_bydate[d].update(fresh_pm.get(d,set()))
+
     pmq=set().union(*pm_bydate.values()) if pm_bydate else set()
-    pmtexts=entity_texts(pmq) if pmq else {}
+    # Same identity universe, fewer API calls: don't refetch labels already cached.
+    uncached_pmq=pmq-set(ntxt)
+    pmtexts=entity_texts(uncached_pmq) if uncached_pmq else {}
     ntxt.update(pmtexts)
 
     # Re-rank unresolved with exact date + +/-1.
