@@ -24,3 +24,20 @@ def test_stratification_blocks_cohort_only_signal():
 def test_truth_precision():
     x,c=m.death_interval("+1950-04-12T00:00:00Z",11,m.GREGORIAN_QID)
     assert x==(date(1950,4,12),date(1950,4,12)) and c=="DAY"
+
+
+def test_wikidata_rank_uri_shape():
+    import re
+    assert re.split(r"[/#]", "http://wikiba.se/ontology#NormalRank")[-1] == "NormalRank"
+    assert re.split(r"[/#]", "http://wikiba.se/ontology#PreferredRank")[-1] == "PreferredRank"
+
+def test_normal_rank_statement_is_usable():
+    s=[{
+        "rank":"NormalRank",
+        "death":"+1970-01-01T00:00:00Z",
+        "precision":11,
+        "calendar":m.GREGORIAN_QID
+    }]
+    r=m.select_truth(date(1900,1,1),s)
+    assert r["truth_status"]=="RESOLVED"
+    assert r["truth_label"]=="LONG"

@@ -86,7 +86,7 @@ OPTIONAL {{
             if "death" not in row:
                 out[qid];continue
             out[qid].append({
-              "rank":row["rank"]["value"].rsplit("/",1)[-1],
+              "rank":re.split(r"[/#]", row["rank"]["value"])[-1],
               "death":row["death"]["value"],
               "precision":int(float(row["precision"]["value"])),
               "calendar":row["calendar"]["value"].rsplit("/",1)[-1]})
