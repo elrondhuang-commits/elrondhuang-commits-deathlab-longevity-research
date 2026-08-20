@@ -1,0 +1,110 @@
+name: A1+A2 combined death-truth efficacy v0.2.1 rank-parser hotfix
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  unblind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify frozen combined Stage-B logic
+        run: |
+          python -m pip install pytest==8.4.1
+          pytest -q unblind/test_combined_unblind_logic.py
+
+      - name: Download exact frozen artifacts
+        run: |
+          mkdir -p artifacts
+          python unblind/download_latest_artifact_combined.py deathlab-a2-birth-only-prediction-freeze artifacts/a2pred
+          python unblind/download_latest_artifact_combined.py deathlab-a2-identity-linkage-freeze-v0-4 artifacts/a2link
+          python unblind/download_latest_artifact_combined.py deathlab-a1-birth-only-prediction-freeze artifacts/a1pred
+          python unblind/download_latest_artifact_combined.py deathlab-a1-identity-linkage-freeze artifacts/a1link
+          find artifacts -maxdepth 2 -type f -print
+
+      - name: Materialize exact frozen birth corpora
+        run: |
+          python scripts/materialize_a2.py artifacts/A2.frozen.csv
+          python unblind/materialize_a1_stageb.py artifacts/A1.frozen.csv
+
+      - name: Freeze combined Stage-B code and protocol BEFORE P570
+        run: |
+          sha256sum unblind/combined_unblind_and_score.py > artifacts/COMBINED_STAGE_B_CODE.sha256
+          sha256sum unblind/COMBINED_DEATH_TRUTH_UNBLIND_PROTOCOL_V0_2.json > artifacts/COMBINED_STAGE_B_PROTOCOL.sha256
+          cat artifacts/COMBINED_STAGE_B_CODE.sha256
+          cat artifacts/COMBINED_STAGE_B_PROTOCOL.sha256
+
+      - name: Verify all pre-unblind commitments and N feasibility
+        run: |
+          python - <<'PY'
+          import csv,hashlib,json,re
+          def H(p):return hashlib.sha256(open(p,"rb").read()).hexdigest()
+          expected={
+            "artifacts/a2pred/CHALLENGER_A2_predictions.csv":"f213787a1bc950313acc4a06d6c9f952a904cdcf6540b616389f53ca7b94cdcc",
+            "artifacts/a2link/A2_identity_links_v0_4.csv":"26b32c2b0874f236b407e9237f1f1ac20b3a9fafa8833ca6b00c0cc41251503d",
+            "artifacts/a1pred/CHALLENGER_A1_predictions.csv":"6caab259e169bdaf196b0dc6096ba3c1659811206dbad7f4f87272704dc3aa0f",
+            "artifacts/a1link/A1_identity_links_v0_1.csv":"3a39f02448a74ea9e96595f7f8e1e8d00cd193a913bf0912fc79891d73128142"}
+          for p,e in expected.items(): assert H(p)==e,(p,H(p),e)
+          a1l=list(csv.DictReader(open("artifacts/a1link/A1_identity_links_v0_1.csv",encoding="utf-8")))
+          a2l=list(csv.DictReader(open("artifacts/a2link/A2_identity_links_v0_4.csv",encoding="utf-8")))
+          a1p={r["NUM"]:r for r in csv.DictReader(open("artifacts/a1pred/CHALLENGER_A1_predictions.csv",encoding="utf-8"))}
+          a2p={r["NUM"]:r for r in csv.DictReader(open("artifacts/a2pred/CHALLENGER_A2_predictions.csv",encoding="utf-8"))}
+          q1={r["QID"] for r in a1l if r["link_status"]=="LINKED"}
+          q2={r["QID"] for r in a2l if r["link_status"]=="LINKED"}
+          assert not(q1&q2),f"cross-cohort duplicate QIDs={len(q1&q2)}"
+          n1=sum(r["link_status"]=="LINKED" and a1p[r["NUM"]]["prediction_status"]=="COVERED" for r in a1l)
+          n2=sum(r["link_status"]=="LINKED" and a2p[r["NUM"]]["prediction_status"]=="COVERED" for r in a2l)
+          assert (n1,n2,n1+n2)==(508,826,1334),(n1,n2,n1+n2)
+          for p in ("artifacts/a1link/A1_identity_links_v0_1.summary.json","artifacts/a2link/A2_identity_links_v0_4.summary.json"):
+              s=json.load(open(p))
+              assert s["death_truth_accessed"] is False
+              assert s["prediction_used_for_linkage"] is False
+              assert s["forbidden_properties_queried"]==[]
+          print("PASS: 1334 pre-unblind max covered; P570 may now be opened.")
+          PY
+
+      - name: UNBLIND P570 and compute frozen combined efficacy
+        run: |
+          python unblind/combined_unblind_and_score.py \
+            --a1-birth artifacts/A1.frozen.csv \
+            --a1-pred artifacts/a1pred/CHALLENGER_A1_predictions.csv \
+            --a1-pred-sha artifacts/a1pred/CHALLENGER_A1_predictions.sha256 \
+            --a1-link artifacts/a1link/A1_identity_links_v0_1.csv \
+            --a1-link-sha artifacts/a1link/A1_identity_links_v0_1.sha256 \
+            --a1-link-summary artifacts/a1link/A1_identity_links_v0_1.summary.json \
+            --a2-birth artifacts/A2.frozen.csv \
+            --a2-pred artifacts/a2pred/CHALLENGER_A2_predictions.csv \
+            --a2-pred-sha artifacts/a2pred/CHALLENGER_A2_predictions.sha256 \
+            --a2-link artifacts/a2link/A2_identity_links_v0_4.csv \
+            --a2-link-sha artifacts/a2link/A2_identity_links_v0_4.sha256 \
+            --a2-link-summary artifacts/a2link/A2_identity_links_v0_4.summary.json \
+            --out-dir artifacts/unblind
+
+      - name: Display frozen efficacy result
+        run: cat artifacts/unblind/COMBINED_EFFICACY_REPORT.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deathlab-a1-a2-combined-unblind-efficacy-v0-2
+          path: |
+            artifacts/COMBINED_STAGE_B_CODE.sha256
+            artifacts/COMBINED_STAGE_B_PROTOCOL.sha256
+            audit/POST_UNBLIND_RANK_PARSER_HOTFIX_V0_2_1.json
+            artifacts/unblind/COMBINED_death_truth.csv
+            artifacts/unblind/COMBINED_death_truth.sha256
+            artifacts/unblind/COMBINED_EFFICACY_REPORT.json
+            artifacts/unblind/COMBINED_EFFICACY_REPORT.sha256
+          if-no-files-found: error
+          retention-days: 90
